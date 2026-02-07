@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>BT Stable V16</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden flex flex-col font-sans">
+    <div class="bg-indigo-600 text-white p-4 shadow-xl flex justify-between items-center">
+        <div><h1 class="font-black text-lg">BT Chat Pro</h1><p id="status" class="text-[10px] opacity-70 uppercase font-bold tracking-widest">Prêt</p></div>
+        <button onclick="scan()" class="bg-white text-indigo-600 px-4 py-2 rounded-xl font-black text-xs uppercase shadow-md active:scale-95">Scan</button>
+    </div>
+    <div id="view" class="flex-1 overflow-y-auto p-4 flex flex-col space-y-2 bg-white pb-24">
+        <div class="text-center mt-20 opacity-20"><p class="text-xs font-bold uppercase tracking-widest">V16 Stable Engine</p></div>
+    </div>
+    <div class="fixed bottom-0 w-full p-4 bg-white border-t border-slate-100 flex flex-col gap-2">
+        <button onclick="bluetoothSerial.setDiscoverable(300)" class="w-full bg-slate-100 text-[10px] font-bold py-2 rounded-lg border border-slate-200 uppercase">Se rendre visible</button>
+        <div id="bar" class="flex gap-2 opacity-30 pointer-events-none transition-all">
+            <input id="input" type="text" class="flex-1 bg-slate-50 rounded-xl px-4 py-3 outline-none text-sm border" placeholder="Message...">
+            <button onclick="send()" class="bg-indigo-600 text-white w-12 h-12 rounded-full flex items-center justify-center">➤</button>
+        </div>
+    </div>
+    <script>
+        function log(m, t='sys') {
+            const d = document.createElement('div');
+            d.className = t==='sys' ? "text-center text-[10px] text-slate-400 my-2 uppercase font-bold" :
+                          t==='me' ? "bg-indigo-600 text-white p-3 rounded-2xl rounded-tr-none ml-auto max-w-[80%] text-sm" :
+                          "bg-slate-100 text-slate-800 p-3 rounded-2xl rounded-tl-none mr-auto max-w-[80%] text-sm border";
+            d.innerText = m; document.getElementById('view').appendChild(d); document.getElementById('view').scrollTop = 99999;
+        }
+        document.addEventListener('deviceready', () => {
+            log("Moteur Stable Chargé");
+            bluetoothSerial.listenInsecure(() => {
+                document.getElementById('status').innerText="Connecté";
+                document.getElementById('bar').classList.remove('opacity-30', 'pointer-events-none');
+                bluetoothSerial.subscribe('\n', d => log(d, 'other'), e => {});
+            }, e => {});
+        }, false);
+        function scan() {
+            document.getElementById('view').innerHTML = '';
+            bluetoothSerial.list(list => {
+                list.forEach(d => {
+                    const btn = document.createElement('div');
+                    btn.className = "bg-slate-50 p-4 rounded-xl border border-slate-100 mb-2 flex justify-between items-center active:bg-indigo-50";
+                    btn.innerHTML = `<div><div class="font-bold text-sm">${d.name || 'BT Device'}</div><div class="text-[10px] text-slate-400">${d.id}</div></div><div class="text-indigo-600 font-bold text-xs uppercase">Connecter</div>`;
+                    btn.onclick = () => {
+                        log("Liaison avec " + d.name + "...");
+                        bluetoothSerial.connectInsecure(d.id, () => {
+                            document.getElementById('status').innerText="Connecté à " + d.name;
+                            document.getElementById('bar').classList.remove('opacity-30', 'pointer-events-none');
+                            bluetoothSerial.subscribe('\n', d => log(d, 'other'), e => {});
+                        }, e => alert("Echec: " + e));
+                    };
+                    document.getElementById('view').appendChild(btn);
+                });
+            }, e => alert(e));
+        }
+        function send() {
+            const i=document.getElementById('input');
+            if(i.value) bluetoothSerial.write(i.value+"\n", () => { log(i.value,'me'); i.value=''; }, e=>{});
+        }
+    </script>
+</body>
+</html>
